@@ -1,6 +1,8 @@
-# Renders README.md into a static site and deploys it to GitHub Pages
-# whenever docs content on `main` changes (synced here by the dochist
-# repo's release workflow), or on manual dispatch.
+# Builds the Elm docs app and deploys it to GitHub Pages whenever docs
+# content on `main` changes (synced here by the dochist repo's release
+# workflow), or on manual dispatch. The Elm app fetches README.md at
+# runtime and renders it as HTML, so no server-side markdown build step
+# is needed beyond compiling the app itself.
 
 name: Deploy GitHub Pages
 
@@ -10,6 +12,10 @@ on:
     paths:
       - "README.md"
       - "demo/**"
+      - "src/**"
+      - "elm.json"
+      - "index.html"
+      - "style.css"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -28,30 +34,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare site directory
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache Elm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.elm
+          key: elm-${{ hashFiles('elm.json') }}
+
+      - name: Install Elm
+        run: npm install -g elm@0.19.1-6
+
+      - name: Build Elm app
+        run: elm make src/Main.elm --optimize --output=main.js
+
+      - name: Assemble site
         run: |
           mkdir -p site
-          cat > site/style.css <<'CSS'
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; line-height: 1.6; color: #1f2328; }
-          pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; }
-          code { background: #f6f8fa; padding: 0.15em 0.35em; border-radius: 4px; }
-          pre code { background: none; padding: 0; }
-          a { color: #0969da; }
-          img { max-width: 100%; }
-          h1, h2, h3 { border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
-          CSS
-          if [ -d demo ]; then cp -r demo site/demo; fi
+          cp index.html site/index.html
+          cp style.css site/style.css
+          cp main.js site/main.js
+          cp README.md site/README.md
           if [ -f LICENSE ]; then cp LICENSE site/LICENSE; fi
-
-      - name: Render README to HTML
-        uses: docker://pandoc/core:3.1
-        with:
-          args: >-
-            --standalone
-            --metadata title="dochist docs"
-            --css=style.css
-            -o site/index.html
-            README.md
+          if [ -d demo ]; then cp -r demo site/demo; fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
