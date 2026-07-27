@@ -1,8 +1,6 @@
-# Builds the Elm docs app and deploys it to GitHub Pages whenever docs
-# content on `main` changes (synced here by the dochist repo's release
-# workflow), or on manual dispatch. The Elm app fetches README.md at
-# runtime and renders it as HTML, so no server-side markdown build step
-# is needed beyond compiling the app itself.
+# Splits README.md into mdBook chapters and deploys the built book to
+# GitHub Pages whenever docs content on `main` changes (synced here by
+# the dochist repo's release workflow), or on manual dispatch.
 
 name: Deploy GitHub Pages
 
@@ -11,11 +9,10 @@ on:
     branches: ["main"]
     paths:
       - "README.md"
+      - "LICENSE"
       - "demo/**"
-      - "src/**"
-      - "elm.json"
-      - "index.html"
-      - "style.css"
+      - "book.toml"
+      - "scripts/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -34,36 +31,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+      - name: Split README into mdBook chapters
+        run: python3 scripts/split-readme.py
 
-      - name: Cache Elm packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.elm
-          key: elm-${{ hashFiles('elm.json') }}
-
-      - name: Install Elm
-        run: npm install -g elm@0.19.1-6
-
-      - name: Build Elm app
-        run: elm make src/Main.elm --optimize --output=main.js
-
-      - name: Assemble site
+      - name: Copy assets into book source
         run: |
-          mkdir -p site
-          cp index.html site/index.html
-          cp style.css site/style.css
-          cp main.js site/main.js
-          cp README.md site/README.md
-          if [ -f LICENSE ]; then cp LICENSE site/LICENSE; fi
-          if [ -d demo ]; then cp -r demo site/demo; fi
+          cp LICENSE src/LICENSE
+          if [ -d demo ]; then cp -r demo src/demo; fi
+
+      - name: Install mdBook
+        run: |
+          set -euo pipefail
+          version=$(curl -sSL https://api.github.com/repos/rust-lang/mdBook/releases/latest | jq -r .tag_name)
+          curl -sSL "https://github.com/rust-lang/mdBook/releases/download/${version}/mdbook-${version}-x86_64-unknown-linux-gnu.tar.gz" | tar -xz
+          sudo mv mdbook /usr/local/bin/
+          mdbook --version
+
+      - name: Build book
+        run: mdbook build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: book
 
   deploy:
     needs: build

@@ -1,0 +1,15 @@
+[book]
+title = "dochist"
+description = "Session-based command history and artifact provenance logger with FAIR compliance reporting"
+authors = ["motroy"]
+src = "src"
+language = "en"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/motroy/dochist"
+git-repository-icon = "fab-github"
+
+[output.html.search]
+enable = true
