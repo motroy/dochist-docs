@@ -207,7 +207,11 @@ renderBlocks blocks =
 
 htmlRenderer : Markdown.Renderer.Renderer (Html msg)
 htmlRenderer =
-    { Markdown.Renderer.defaultHtmlRenderer | heading = renderHeading }
+    let
+        default =
+            Markdown.Renderer.defaultHtmlRenderer
+    in
+    { default | heading = renderHeading }
 
 
 renderHeading :
