@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Stand-in for the real FastQC CLI, used only to make the recorded demo in
+# demo/record.sh runnable without requiring real bioinformatics tools to be
+# installed. Prints realistic-looking progress and writes a real report file
+# so dochist has something real to hash and track.
+set -euo pipefail
+
+file="${1:?usage: fastqc <file>}"
+base="${file%%.*}"
+
+echo "Started analysis of $file"
+sleep 0.25
+echo "Approx 25% complete for $file"
+sleep 0.25
+echo "Approx 75% complete for $file"
+sleep 0.25
+
+cat > "${base}_fastqc.html" <<HTML
+<html>
+<head><title>FastQC Report: ${file}</title></head>
+<body>
+<h1>FastQC Report: ${file}</h1>
+<table>
+<tr><td>Per base sequence quality</td><td>PASS</td></tr>
+<tr><td>Per sequence GC content</td><td>PASS</td></tr>
+<tr><td>Adapter Content</td><td>PASS</td></tr>
+</table>
+</body>
+</html>
+HTML
+
+echo "Analysis complete for $file"
