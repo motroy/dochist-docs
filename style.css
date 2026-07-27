@@ -67,11 +67,11 @@ body {
 .layout {
   display: flex;
   align-items: flex-start;
-  gap: 2.5rem;
+  gap: 1.5rem;
 }
 
 .toc {
-  flex: 0 0 220px;
+  flex: 0 0 170px;
   position: sticky;
   top: 1.5rem;
   max-height: calc(100vh - 3rem);
@@ -169,7 +169,7 @@ img {
   max-width: 100%;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 560px) {
   .layout {
     flex-direction: column;
     gap: 0;
