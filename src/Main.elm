@@ -41,8 +41,8 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg _ =
     case msg of
-        GotReadme (Ok body) ->
-            ( Success body, Cmd.none )
+        GotReadme (Ok markdown) ->
+            ( Success markdown, Cmd.none )
 
         GotReadme (Err err) ->
             ( Failure (httpErrorToString err), Cmd.none )
@@ -63,8 +63,8 @@ httpErrorToString err =
         Http.BadStatus code ->
             "Server responded with status " ++ String.fromInt code ++ "."
 
-        Http.BadBody body ->
-            "Unexpected response body: " ++ body
+        Http.BadBody responseBody ->
+            "Unexpected response body: " ++ responseBody
 
 
 view : Model -> Html Msg
