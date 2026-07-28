@@ -213,6 +213,26 @@ Known limitations: `stdout`/`stderr` tails aren't captured into the session for 
 
 Markdown output is for humans; `--format json` emits a machine-readable version embedding the full session document.
 
+## Extracting a reproduction script
+
+The FAIR report's reproduction script is a literal, unfiltered replay of everything that happened — failed attempts and debugging one-offs included. `dochist extract` turns a session into a curated, runnable script instead:
+
+```sh
+dochist extract                          # successful commands only, in order, to stdout
+dochist extract -o pipeline.sh           # same, written to a file and made executable
+dochist extract --include-failed         # keep non-zero-exit commands too
+dochist extract --only assembly/scaffolds.fasta   # only commands that created/modified this artifact
+dochist extract --with-env               # annotate with `# [manager:env]` wherever the environment changes
+```
+
+Multiple sessions can be combined with `--merge <file>` (repeatable, using files from `dochist save`), interleaving all sessions' commands by start time:
+
+```sh
+dochist extract --merge qc-session.dochist.json --merge assembly-session.dochist.json -o pipeline.sh
+```
+
+`--only` restricts to commands that directly produced or touched the given artifact path(s) — dochist records what each command *output*, not what it *read*, so this prunes dead-end explorations but doesn't build a full input/output dependency graph; use `dochist browse`'s Artifacts tab to trace less obvious chains by hand.
+
 ## Command reference
 
 | Command | Description |
@@ -231,6 +251,7 @@ Markdown output is for humans; `--format json` emits a machine-readable version 
 | `dochist env show` | Show the detected package-manager environment |
 | `dochist env snapshot [-m M] [-c CMD] [-o FILE]` | Capture an environment export as an artifact |
 | `dochist report [-f markdown\|json\|html\|pdf] [-o FILE]` | Generate the FAIR compliance document (PDF requires wkhtmltopdf) |
+| `dochist extract [-o FILE] [--only PATH]... [--include-failed] [--with-env] [--merge FILE]...` | Extract a curated, runnable reproduction script (successful commands only, by default) |
 | `dochist save [-o FILE]` | Export the session to a portable file |
 | `dochist load <file>` | Import a saved session and make it active |
 | `dochist sessions` | List all sessions in the store |
