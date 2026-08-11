@@ -1,7 +1,7 @@
 # dochist
 
 [![CI](https://github.com/motroy/dochist/actions/workflows/ci.yml/badge.svg)](https://github.com/motroy/dochist/actions/workflows/ci.yml)
-[![Release](https://github.com/motroy/dochist/actions/workflows/release.yml/badge.svg)](https://github.com/motroy/dochist/releases)
+[![Release](https://github.com/motroy/dochist/actions/workflows/release.yml/badge.svg)](https://github.com/motroy/dochist-docs/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **dochist** is a session-based command history and artifact provenance logger, written in Rust. It records every command you run through it into a named session, tracks the files each command creates or modifies (with SHA-256 checksums), and renders the whole session as a [FAIR](https://www.go-fair.org/fair-principles/) compliance document. Sessions are plain JSON and can be saved and reloaded, so work can be paused and continued — even on a different machine.
@@ -19,31 +19,41 @@ Typical use case: documenting a data-analysis or bioinformatics pipeline as you 
 Run the installer — it downloads a fully-static (musl) binary for your architecture (x86_64 or aarch64) and places it in `~/.local/bin`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/motroy/dochist/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/motroy/dochist-docs/main/install.sh | sh
 ```
 
 Or with wget:
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/motroy/dochist/main/install.sh | sh
+wget -qO- https://raw.githubusercontent.com/motroy/dochist-docs/main/install.sh | sh
 ```
 
 Override the install directory:
 
 ```sh
-DOCHIST_INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/motroy/dochist/main/install.sh | sh
+DOCHIST_INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/motroy/dochist-docs/main/install.sh | sh
 ```
 
 The musl binaries are fully self-contained — no glibc, no Rust runtime, no system libraries beyond the Linux kernel are required.
 
 ### Other platforms
 
-Download a prebuilt binary for macOS (Intel/Apple Silicon) or Windows from the [Releases page](https://github.com/motroy/dochist/releases).
+Download a prebuilt binary for macOS (Intel/Apple Silicon) or Windows from the [Releases page](https://github.com/motroy/dochist-docs/releases).
 
 ### Build from source
 
 ```sh
 cargo install --git https://github.com/motroy/dochist
+```
+
+### Updating
+
+Once installed, `dochist update` checks GitHub for a newer release and, if one exists, downloads and swaps in the matching prebuilt binary for your platform in place — no need to re-run the installer:
+
+```sh
+dochist update            # check, and install if a newer version is found (asks first)
+dochist update --check    # only report whether an update is available
+dochist update -y         # install without the confirmation prompt
 ```
 
 ## Quick start
@@ -257,6 +267,7 @@ dochist extract --merge qc-session.dochist.json --merge assembly-session.dochist
 | `dochist sessions` | List all sessions in the store |
 | `dochist resume <name>` | Make an existing session active |
 | `dochist end` | Mark the active session as ended |
+| `dochist update [--check] [-y\|--yes]` | Check GitHub for a newer dochist release and install it (`--check` only reports, `-y` skips the confirmation prompt) |
 
 The global `--session <name>` (`-s`) flag makes any command operate on a named session instead of the active one, without changing `HEAD` — useful for concurrent use across terminals or tmux panes.
 
