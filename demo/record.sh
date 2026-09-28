@@ -7,12 +7,18 @@
 set -euo pipefail
 
 DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PATH="$DEMO_DIR/fake-tools:$PATH"
 export TERM="${TERM:-xterm-256color}"
 
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/dochist-demo.XXXXXX")"
 trap 'rm -rf "$WORKDIR"' EXIT
-cd "$WORKDIR"
+
+# Install the fake tools into an env-style bin/ next to (not inside) the
+# project, so the tool paths dochist records look like a real environment
+# rather than wherever this repo happens to be checked out.
+mkdir -p "$WORKDIR/env/bin" "$WORKDIR/project"
+cp "$DEMO_DIR"/fake-tools/* "$WORKDIR/env/bin/"
+export PATH="$WORKDIR/env/bin:$PATH"
+cd "$WORKDIR/project"
 
 clear
 

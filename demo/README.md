@@ -9,12 +9,14 @@ filter, inspect a command's detail pane).
 ## Files
 
 - `record.sh` — the script that's actually recorded. Sets up its own scratch
-  directory (never the repo working tree), puts `fake-tools/` on `PATH` so
-  the pipeline runs without needing real bioinformatics tools installed, and
-  "types" each command with a short per-character delay before running it.
+  directory (never the repo working tree), copies `fake-tools/` into an
+  env-style `bin/` there and puts it on `PATH` so the pipeline runs without
+  needing real bioinformatics tools installed, and "types" each command with
+  a short per-character delay before running it.
 - `fake-tools/fastqc`, `fake-tools/spades.py` — minimal stand-ins that print
   realistic progress output and write real files, so dochist has genuine
-  artifacts to hash and track.
+  artifacts to hash and track. They answer `--version` like the real tools,
+  so `dochist log` shows the per-command tool versions dochist records.
 - `pty_type.py` — a small generic pty driver used to script the
   `dochist browse` segment (it launches a program in its own pty, streams
   the program's output live to stdout, and injects a timed sequence of

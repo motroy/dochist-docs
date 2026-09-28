@@ -5,6 +5,12 @@
 # so dochist has something real to hash and track.
 set -euo pipefail
 
+# Answer version queries like the real tool, so `dochist run` records a
+# version instead of "analysing" a file called --version.
+case "${1:-}" in
+  --version | -v) echo "FastQC v0.12.1"; exit 0 ;;
+esac
+
 file="${1:?usage: fastqc <file>}"
 base="${file%%.*}"
 

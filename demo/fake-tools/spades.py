@@ -3,6 +3,12 @@
 # assembly step to run without depending on real bioinformatics tools.
 set -euo pipefail
 
+# Answer version queries like the real tool, so `dochist run` records a
+# version instead of running an assembly.
+case "${1:-}" in
+  --version | -v) echo "SPAdes genome assembler v3.15.5"; exit 0 ;;
+esac
+
 outdir="assembly"
 prev=""
 for arg in "$@"; do

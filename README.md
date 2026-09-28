@@ -173,7 +173,7 @@ Tools are fingerprinted **before** the command runs, so the record describes the
 
 Both markers mean the fingerprint was taken after the command ran. `dochist log` and the reports show them as "resolved on the command's PATH" and "resolved after run".
 
-A version is probed once per distinct binary. Later commands that use the same path with the same checksum reuse it. Pass `--no-version-probe` (or set `DOCHIST_NO_VERSION_PROBE=1`) to skip running the tools, for example when a tool might treat `-v` or `version` as real input. The path and checksum are still recorded. The tools appear in the report's **Software environments** section, per command in the session JSON (`commands[].tools`), and aggregated under `fair.reusable.tools` in the JSON report. Programs referenced through variables (`$TOOL args`) cannot be resolved statically and are not recorded. Commands tracked by the live TUI shell hook do not get tool fingerprints yet; use `dochist run` for those.
+A version is probed once per distinct binary. Later commands that use the same path with the same checksum reuse it. Pass `--no-version-probe` (or set `DOCHIST_NO_VERSION_PROBE=1`) to skip running the tools, for example when a tool might treat `-v` or `version` as real input. The path and checksum are still recorded. The tools appear in the report's **Software environments** section, per command in the session JSON (`commands[].tools`), and aggregated under `fair.reusable.tools` in the JSON report. Programs referenced through variables (`$TOOL args`) cannot be resolved statically and are not recorded. Commands run inside `dochist tui` are fingerprinted too (see [Live TUI](#live-tui-dochist-tui)).
 
 ## Saving and reloading sessions
 
@@ -218,24 +218,27 @@ dochist browse --session other  # browse a named session, without changing HEAD
 
 - `Tab` / `Shift+Tab` — switch between the Commands and Artifacts tabs
 - `j`/`k` or `↑`/`↓` — move the selection; `g`/`G` or `Home`/`End` jump to the first/last item
-- `/` — filter the list by substring (command text/id, or artifact path); `Esc` clears it, `Enter` keeps it and resumes navigating
+- `/` — filter the list by substring (command text/id or tool version, e.g. `/3.15`; or artifact path); `Esc` clears it, `Enter` keeps it and resumes navigating
 - `PageUp`/`PageDown` — scroll the detail pane (e.g. long stdout/stderr tails)
 - `r` — reload the session from disk (useful if it's still active in another terminal)
 - `q` / `Esc` / `Ctrl+C` — quit
+
+A command's detail pane lists the tools it invoked: each one's version (and how it was found), its resolved path, and its checksum.
 
 ## Live TUI (`dochist tui`)
 
 `dochist tui` opens a real, interactive shell in a terminal UI, with a side panel that updates live as you work — the commands you run and the artifacts they produce appear next to the shell as they happen, instead of only after the fact via `dochist log`:
 
 ```sh
-dochist tui                  # requires an active session; dochist init first
+dochist tui                      # requires an active session; dochist init first
+dochist tui --no-version-probe   # record tool paths/checksums without running --version
 ```
 
 Layout: the shell fills the main pane (colors, `$EDITOR`, curses apps like `vim`/`htop` all work normally — it's a full PTY, not a captured/replayed transcript); the side panel shows the session's Commands and Artifacts, auto-scrolled to the latest. Press **F10** to exit — this ends the wrapped shell, like closing a terminal tab; everything recorded up to that point stays in the session.
 
-Per-command tracking is automatic for **bash** and **zsh**: dochist injects a `preexec`/`precmd`-style hook (in the spirit of the OSC 133 shell-integration sequences used by iTerm2, VS Code, and others) that reports each command's boundaries privately, so the store gets snapshotted before/after exactly as `dochist run` does — artifacts get attributed to the command that produced them, and the active conda/mamba/pixi/venv environment is captured per command too. Your normal `~/.bashrc` / `~/.zshrc` still loads. Other shells (fish, plain `sh`, `cmd.exe`, ...) still get a fully working terminal — just without automatic per-command records; use `dochist run` there instead.
+Per-command tracking is automatic for **bash** and **zsh**: dochist injects a `preexec`/`precmd`-style hook (in the spirit of the OSC 133 shell-integration sequences used by iTerm2, VS Code, and others) that reports each command's boundaries privately, so the store gets snapshotted before/after exactly as `dochist run` does — artifacts get attributed to the command that produced them, and the active conda/mamba/pixi/venv environment is captured per command too. The tools each command invokes are fingerprinted as with [`dochist run`](#tool-versions), but resolved on your interactive shell's own `PATH`. That means an environment you `conda activate` at the prompt is picked up automatically, and so is a `PATH` change made inside the command line. Fingerprinting runs in the background while the command runs, so it never delays the prompt. The side panel shows each command's tool versions (`↳ fastqc 0.12.1 · samtools 1.19`). Your normal `~/.bashrc` / `~/.zshrc` still loads. Other shells (fish, plain `sh`, `cmd.exe`, ...) still get a fully working terminal — just without automatic per-command records; use `dochist run` there instead.
 
-Known limitations: `stdout`/`stderr` tails aren't captured into the session for commands run this way (they're visible live on screen, just not embedded in the FAIR report as text) — use `dochist run` when you need that. Command-boundary detection is best-effort shell scripting, not a kernel-level guarantee.
+Known limitations: `stdout`/`stderr` tails aren't captured into the session for commands run this way (they're visible live on screen, just not embedded in the FAIR report as text) — use `dochist run` when you need that. Command-boundary detection is best-effort shell scripting, not a kernel-level guarantee. Tool fingerprinting runs alongside the command rather than strictly before it, so a tool that the same command line installs (`pip install x && x`) may be recorded as already present instead of `resolved after run`.
 
 ## The FAIR report
 
@@ -279,7 +282,7 @@ dochist extract --merge qc-session.dochist.json --merge assembly-session.dochist
 | `dochist prompt [--format prefix\|suffix\|prompt\|title]` | Print session name for shell/tmux integration (silent outside a session) |
 | `dochist artifacts` | List tracked artifacts with provenance |
 | `dochist browse` | Interactive TUI to browse command history and artifacts |
-| `dochist tui` | Live TUI: a real shell with a side panel tracking commands and artifacts (F10 to exit) |
+| `dochist tui [--no-version-probe]` | Live TUI: a real shell with a side panel tracking commands, tool versions and artifacts (F10 to exit) |
 | `dochist artifact-add <path> [--role R]` | Manually register a file as an artifact (optionally tagging a role, e.g. `provenance`) |
 | `dochist meta set <key> <value>` | Set FAIR metadata (license, author, ...) |
 | `dochist meta show` | Show session metadata |
