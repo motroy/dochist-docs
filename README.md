@@ -152,7 +152,7 @@ By manager the default export is `conda env export` → `environment.yml`, the m
 
 ### Tool versions
 
-Every `dochist run` also fingerprints the programs the command invokes — the first word of each pipeline stage and `&&` / `;` list element, skipping shell builtins, `VAR=value` prefixes and wrappers like `time`, `env`, `nohup` and `sudo`. Before the command runs, each tool is resolved on `PATH` exactly as the shell would, and dochist records:
+Every `dochist run` also fingerprints the programs the command invokes — the first word of each pipeline stage and `&&` / `;` list element, skipping shell builtins and `VAR=value` prefixes. Wrappers (`time`, `env`, `nice`, `nohup`, `sudo`, `timeout`, `stdbuf`, `ionice`, `exec`, `command`) are looked through to the program they run, including options that take a value, so `nice -n 5 sort` records `sort` and `sudo -u alice make` records `make`. `xargs` and GNU `parallel` are treated the same way, so `find … | xargs -P 4 gzip` records `find` and `gzip`, and `parallel -j 8 'gzip -k {}' ::: *.fq` records `gzip`. Before the command runs, each tool is resolved on `PATH` exactly as the shell would, and dochist records:
 
 - the resolved executable path (symlinks followed)
 - the executable's SHA-256
