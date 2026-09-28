@@ -150,6 +150,31 @@ dochist env snapshot -o environment.yml    # choose the output filename
 
 By manager the default export is `conda env export` → `environment.yml`, the mamba/micromamba binary's `env export` for mamba, `pixi list` → `environment-pixi.txt`, and `pip freeze` → `requirements.txt` otherwise. Any authoritative manifest/lock files present in the store root (`pixi.lock`, `pixi.toml`, `conda-lock.yml`, `environment.yml`, `requirements.txt`) are registered as artifacts too, since the lockfile is the reproducible source of truth. The snapshots appear in the report's **Software environments** section and under `fair.reusable.environment_snapshots` in JSON.
 
+### Tool versions
+
+Every `dochist run` also fingerprints the programs the command invokes — the first word of each pipeline stage and `&&` / `;` list element, skipping shell builtins, `VAR=value` prefixes and wrappers like `time`, `env`, `nohup` and `sudo`. Before the command runs, each tool is resolved on `PATH` exactly as the shell would, and dochist records:
+
+- the resolved executable path (symlinks followed)
+- the executable's SHA-256
+- the tool's version line, and which probe produced it. Tools disagree on how to report a version, so dochist tries `--version`, `-V`, `-v` and a `version` subcommand, then falls back to the `--help` and `-h` banners. Output from a version flag is accepted if a line contains a dotted number such as `0.7.17`, as with `bwa`'s usage banner. Help text is full of unrelated numbers such as defaults and thresholds, so there a line must say "version" or put the number straight after the tool name (`mapper v2.4.1`). Each probe runs in a temporary directory with no stdin and a 3-second timeout, and dochist stops trying new probes after 8 seconds per tool.
+
+```sh
+dochist run -- "samtools view -b in.sam | samtools sort -o out.bam && go run ./report"
+dochist log
+# [cmd-0001] ... | samtools view -b in.sam | samtools sort -o out.bam && go run ./report
+#     tool samtools: samtools 1.19 (/opt/conda/envs/bio/bin/samtools)
+#     tool go: go version go1.24.7 linux/amd64 [via version] (/usr/local/go/bin/go)
+```
+
+Tools are fingerprinted **before** the command runs, so the record describes the binaries that actually executed, even if the command later upgrades them. Once the command finishes, a second pass fills two gaps:
+
+- **`PATH` changed inside the command** (`conda activate bio; bwa ...`, `export PATH=...; tool`). On Unix, dochist runs the command in a way that makes its shell report the `PATH` it ended with, and passes on the command's own exit status unchanged. If that `PATH` differs from dochist's, every tool is looked up again on it. Any tool that resolves to a different executable, such as the env's `bwa` rather than `/usr/bin/bwa`, is fingerprinted and version-probed with that `PATH`, and marked `"resolution": "command_path"`. The recorded command line stays exactly as you typed it. A command that calls `exit` itself or stops early under `set -e` skips the report and falls back to dochist's own `PATH`, as does `cmd.exe` on Windows. dochist uses the final `PATH` for every tool, so in `bwa ...; conda activate other` it would record the wrong `bwa`.
+- **The command installs or builds the tool** (`conda install -y samtools && samtools ...`, `make && ./mytool`). Tools that couldn't be found before are retried and marked `"resolution": "after_run"`.
+
+Both markers mean the fingerprint was taken after the command ran. `dochist log` and the reports show them as "resolved on the command's PATH" and "resolved after run".
+
+A version is probed once per distinct binary. Later commands that use the same path with the same checksum reuse it. Pass `--no-version-probe` (or set `DOCHIST_NO_VERSION_PROBE=1`) to skip running the tools, for example when a tool might treat `-v` or `version` as real input. The path and checksum are still recorded. The tools appear in the report's **Software environments** section, per command in the session JSON (`commands[].tools`), and aggregated under `fair.reusable.tools` in the JSON report. Programs referenced through variables (`$TOOL args`) cannot be resolved statically and are not recorded. Commands tracked by the live TUI shell hook do not get tool fingerprints yet; use `dochist run` for those.
+
 ## Saving and reloading sessions
 
 Sessions live under `.dochist/sessions/` as self-contained JSON documents.
@@ -248,7 +273,7 @@ dochist extract --merge qc-session.dochist.json --merge assembly-session.dochist
 | Command | Description |
 |---|---|
 | `dochist init <name> [-d DESC]` | Start a new session in the current directory |
-| `dochist run -- <command>` | Run a command, logging it and its artifacts |
+| `dochist run [--no-version-probe] -- <command>` | Run a command, logging it, its artifacts, and the versions of the tools it invokes |
 | `dochist log [-n N]` | Show command history |
 | `dochist status` | Show active session summary |
 | `dochist prompt [--format prefix\|suffix\|prompt\|title]` | Print session name for shell/tmux integration (silent outside a session) |
