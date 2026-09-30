@@ -173,6 +173,17 @@ Tools are fingerprinted **before** the command runs, so the record describes the
 
 Both markers mean the fingerprint was taken after the command ran. `dochist log` and the reports show them as "resolved on the command's PATH" and "resolved after run".
 
+#### Shell scripts and Snakemake workflows
+
+A command like `bash pipeline.sh` or `snakemake -j 8` runs a single program, but the tools that matter for provenance are the ones the script or workflow runs. dochist reads these files statically before the command runs (nothing is executed) and records the tools inside them, each tagged with the file that invokes it (`from pipeline.sh`):
+
+- **Shell scripts**: `bash|sh|zsh|dash|ksh script.sh`, `bash -c '…'`, `source x.sh` / `. x.sh`, and scripts run directly (`./run.sh`) when they have a shell shebang and live inside the working directory. Scripts that call other scripts are followed (up to 5 levels deep, with cycle protection). The parser understands comments, `if`/`then`/`do` lines, `case` patterns, `[[ … ]]`, `(( … ))`, here-documents and shell functions, so `usage() { … }` or `ont_r9|ont_r10) ;;` are not mistaken for programs.
+- **Snakemake**: the Snakefile is found the way Snakemake finds it (`-s` / `--snakefile`, then `Snakefile`, `workflow/Snakefile`). Every `shell:` directive and `shell(…)` call in it is scanned, as are `include:`d `.smk` files, `.sh` files named by `script:`, and `configfile:` / `--configfile` files.
+
+The script, Snakefile, included files and config files are recorded too, with their SHA-256 (version shown as "shell script", "Snakemake workflow file" or "Snakemake config file"), so the report pins the exact workflow definition that ran.
+
+This is best-effort static analysis. Commands built from variables (`$tool …`), `eval`, `run:` blocks that compute the command, and job lists piped into `parallel` (as in `echo "tool …" >> jobs.txt; parallel < jobs.txt`) cannot be resolved; tools that only exist inside a Snakemake `conda:` environment or container are recorded as "not found on PATH" because they are not on dochist's `PATH`.
+
 A version is probed once per distinct binary. Later commands that use the same path with the same checksum reuse it. Pass `--no-version-probe` (or set `DOCHIST_NO_VERSION_PROBE=1`) to skip running the tools, for example when a tool might treat `-v` or `version` as real input. The path and checksum are still recorded. The tools appear in the report's **Software environments** section, per command in the session JSON (`commands[].tools`), and aggregated under `fair.reusable.tools` in the JSON report. Programs referenced through variables (`$TOOL args`) cannot be resolved statically and are not recorded. Commands run inside `dochist tui` are fingerprinted too (see [Live TUI](#live-tui-dochist-tui)).
 
 ## Saving and reloading sessions
